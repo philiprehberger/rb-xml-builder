@@ -202,6 +202,216 @@ RSpec.describe Philiprehberger::XmlBuilder do
     end
   end
 
+  describe 'XML namespace support' do
+    it 'creates a namespace-prefixed element with xmlns declaration' do
+      xml = described_class.build do |doc|
+        doc.namespace(:soap, 'http://schemas.xmlsoap.org/soap/envelope/')
+        doc.namespace_tag(:soap, :Envelope) do
+          doc.namespace_tag(:soap, :Body)
+        end
+      end
+      expect(xml).to include('<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">')
+      expect(xml).to include('<soap:Body')
+    end
+
+    it 'supports multiple namespace prefixes' do
+      xml = described_class.build do |doc|
+        doc.namespace(:soap, 'http://schemas.xmlsoap.org/soap/envelope/')
+        doc.namespace(:wsse, 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd')
+        doc.namespace_tag(:soap, :Envelope) do
+          doc.namespace_tag(:wsse, :Security)
+        end
+      end
+      expect(xml).to include('xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"')
+      expect(xml).to include('xmlns:wsse=')
+      expect(xml).to include('<wsse:Security')
+    end
+
+    it 'allows additional attributes on namespace tags' do
+      xml = described_class.build do |doc|
+        doc.namespace(:ns, 'http://example.com/ns')
+        doc.namespace_tag(:ns, :item, id: '1') do
+          doc.text('content')
+        end
+      end
+      expect(xml).to include('xmlns:ns="http://example.com/ns"')
+      expect(xml).to include('id="1"')
+      expect(xml).to include('content</ns:item>')
+    end
+
+    it 'creates namespace-prefixed tags via tag method with string names' do
+      xml = described_class.build do |doc|
+        doc.tag('soap:Envelope', 'xmlns:soap' => 'http://schemas.xmlsoap.org/soap/envelope/') do
+          doc.tag('soap:Body')
+        end
+      end
+      expect(xml).to include('<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/">')
+      expect(xml).to include('<soap:Body />')
+    end
+
+    it 'handles namespace_tag without a registered namespace' do
+      xml = described_class.build do |doc|
+        doc.namespace_tag(:custom, :element)
+      end
+      expect(xml).to include('<custom:element />')
+      expect(xml).not_to include('xmlns:custom')
+    end
+
+    it 'supports symbol attribute keys with double underscores as namespace separator' do
+      xml = described_class.build do |doc|
+        doc.tag(:item, xmlns__custom: 'http://example.com')
+      end
+      expect(xml).to include('xmlns:custom="http://example.com"')
+    end
+  end
+
+  describe 'SOAP envelope builder' do
+    it 'builds a SOAP 1.1 envelope' do
+      xml = described_class.build do |doc|
+        doc.soap_envelope do |_header, body|
+          body << ->(d) { d.tag('GetPrice') { d.text('Widget') } }
+        end
+      end
+      expect(xml).to include('xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"')
+      expect(xml).to include('<soap:Envelope')
+      expect(xml).to include('<soap:Header')
+      expect(xml).to include('<soap:Body')
+      expect(xml).to include('<GetPrice>Widget</GetPrice>')
+    end
+
+    it 'builds a SOAP 1.2 envelope' do
+      xml = described_class.build do |doc|
+        doc.soap_envelope(version: '1.2') do |_header, body|
+          body << ->(d) { d.tag('GetPrice') }
+        end
+      end
+      expect(xml).to include('xmlns:soap="http://www.w3.org/2003/05/soap-envelope"')
+      expect(xml).to include('<soap:Envelope')
+    end
+
+    it 'supports header and body content' do
+      xml = described_class.build do |doc|
+        doc.soap_envelope do |header, body|
+          header << ->(d) { d.tag('auth') { d.text('token123') } }
+          body << ->(d) { d.tag('request') { d.text('data') } }
+        end
+      end
+      expect(xml).to include('<soap:Header><auth>token123</auth></soap:Header>')
+      expect(xml).to include('<soap:Body><request>data</request></soap:Body>')
+    end
+
+    it 'raises an error for unsupported SOAP version' do
+      expect do
+        described_class.build do |doc|
+          doc.soap_envelope(version: '2.0') { |_h, _b| }
+        end
+      end.to raise_error(Philiprehberger::XmlBuilder::Error, /Unsupported SOAP version/)
+    end
+
+    it 'builds an empty SOAP envelope without a block' do
+      xml = described_class.build(&:soap_envelope)
+      expect(xml).to include('<soap:Envelope')
+      expect(xml).to include('<soap:Header')
+      expect(xml).to include('<soap:Body')
+    end
+
+    it 'works via the build_soap convenience method' do
+      xml = described_class.build_soap(soap_version: '1.1') do |_header, body|
+        body << ->(d) { d.tag('Action') { d.text('test') } }
+      end
+      expect(xml).to start_with('<?xml version="1.0" encoding="UTF-8"?>')
+      expect(xml).to include('<soap:Envelope')
+      expect(xml).to include('<Action>test</Action>')
+    end
+
+    it 'build_soap supports SOAP 1.2' do
+      xml = described_class.build_soap(soap_version: '1.2') do |_header, body|
+        body << ->(d) { d.tag('Ping') }
+      end
+      expect(xml).to include('xmlns:soap="http://www.w3.org/2003/05/soap-envelope"')
+    end
+  end
+
+  describe 'XML fragment composition' do
+    it 'appends children from one document to another' do
+      fragment = Philiprehberger::XmlBuilder::Document.new
+      fragment.tag(:item, id: '1') { fragment.text('first') }
+      fragment.tag(:item, id: '2') { fragment.text('second') }
+
+      xml = described_class.build do |doc|
+        doc.tag(:root) do
+          doc.append(fragment)
+        end
+      end
+      expect(xml).to include('<item id="1">first</item>')
+      expect(xml).to include('<item id="2">second</item>')
+      expect(xml).to include('<root><item id="1">first</item><item id="2">second</item></root>')
+    end
+
+    it 'appends at the document root level' do
+      fragment = Philiprehberger::XmlBuilder::Document.new
+      fragment.tag(:section) { fragment.text('content') }
+
+      xml = described_class.build do |doc|
+        doc.append(fragment)
+      end
+      expect(xml).to include('<section>content</section>')
+    end
+
+    it 'raises an error when appending a non-Document' do
+      expect do
+        described_class.build do |doc|
+          doc.append('not a document')
+        end
+      end.to raise_error(Philiprehberger::XmlBuilder::Error, /append expects a Document/)
+    end
+
+    it 'inserts a raw XML fragment string' do
+      xml = described_class.build do |doc|
+        doc.tag(:root) do
+          doc.insert_fragment('<existing>data</existing>')
+        end
+      end
+      expect(xml).to include('<root><existing>data</existing></root>')
+    end
+
+    it 'composes multiple fragments into a single document' do
+      header_fragment = Philiprehberger::XmlBuilder::Document.new
+      header_fragment.tag(:title) { header_fragment.text('My Doc') }
+
+      body_fragment = Philiprehberger::XmlBuilder::Document.new
+      body_fragment.tag(:paragraph) { body_fragment.text('Hello world') }
+
+      xml = described_class.build do |doc|
+        doc.tag(:document) do
+          doc.tag(:header) { doc.append(header_fragment) }
+          doc.tag(:body) { doc.append(body_fragment) }
+        end
+      end
+      expect(xml).to include('<header><title>My Doc</title></header>')
+      expect(xml).to include('<body><paragraph>Hello world</paragraph></body>')
+    end
+
+    it 'combines fragment composition with namespaces' do
+      fragment = Philiprehberger::XmlBuilder::Document.new
+      fragment.tag('wsse:UsernameToken') do
+        fragment.tag('wsse:Username') { fragment.text('admin') }
+      end
+
+      xml = described_class.build do |doc|
+        doc.tag('soap:Envelope', 'xmlns:soap' => 'http://schemas.xmlsoap.org/soap/envelope/',
+                                 'xmlns:wsse' => 'http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd') do
+          doc.tag('soap:Header') do
+            doc.append(fragment)
+          end
+          doc.tag('soap:Body')
+        end
+      end
+      expect(xml).to include('<wsse:UsernameToken>')
+      expect(xml).to include('<wsse:Username>admin</wsse:Username>')
+    end
+  end
+
   describe Philiprehberger::XmlBuilder::Escaper do
     it 'escapes all five XML entities' do
       result = described_class.escape('&<>"\' test')
