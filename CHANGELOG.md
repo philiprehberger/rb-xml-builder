@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-04-10
+
+### Added
+- Add `declaration:` option to `build`, `build_soap`, and `Document.new` to omit the XML declaration when building fragments
+- Add CDATA content validation — raises `Error` if content contains `]]>`
+- Add comment text validation — raises `Error` if text contains `--`
+- Add Ruby 3.4 to CI test matrix
+
 ## [0.2.2] - 2026-03-31
 
 ### Added

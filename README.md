@@ -98,6 +98,19 @@ xml = Philiprehberger::XmlBuilder.build do |doc|
 end
 ```
 
+### Without XML Declaration
+
+Omit the `<?xml ... ?>` declaration when building fragments:
+
+```ruby
+xml = Philiprehberger::XmlBuilder.build(declaration: false) do |doc|
+  doc.tag(:item, id: "1") { doc.text("fragment") }
+end
+
+puts xml
+# <item id="1">fragment</item>
+```
+
 ### XML Namespaces
 
 Register namespace prefixes and create namespace-aware elements:
@@ -184,8 +197,8 @@ end
 
 | Method | Description |
 |--------|-------------|
-| `.build(encoding: "UTF-8", version: "1.0") { \|doc\| ... }` | Build an XML document and return the string |
-| `.build_soap(soap_version: "1.1", encoding: "UTF-8", version: "1.0") { \|header, body\| ... }` | Build a SOAP envelope document |
+| `.build(encoding: "UTF-8", version: "1.0", declaration: true) { \|doc\| ... }` | Build an XML document and return the string |
+| `.build_soap(soap_version: "1.1", encoding: "UTF-8", version: "1.0", declaration: true) { \|header, body\| ... }` | Build a SOAP envelope document |
 
 ### `Document`
 

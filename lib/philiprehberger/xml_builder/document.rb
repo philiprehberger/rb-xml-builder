@@ -10,9 +10,10 @@ module Philiprehberger
 
       # @param version [String] XML version for the declaration
       # @param encoding [String] XML encoding for the declaration
-      def initialize(version: '1.0', encoding: 'UTF-8')
+      def initialize(version: '1.0', encoding: 'UTF-8', declaration: true)
         @version = version
         @encoding = encoding
+        @declaration = declaration
         @children = []
         @node_stack = []
         @namespaces = {}
@@ -50,6 +51,8 @@ module Philiprehberger
       # @param content [String] the CDATA content (must not contain "]]>")
       # @return [void]
       def cdata(content)
+        raise Error, 'CDATA content must not contain "]]>"' if content.to_s.include?(']]>')
+
         current_parent.push("<![CDATA[#{content}]]>")
       end
 
@@ -58,6 +61,8 @@ module Philiprehberger
       # @param text [String] the comment text
       # @return [void]
       def comment(text)
+        raise Error, 'Comment text must not contain "--"' if text.to_s.include?('--')
+
         current_parent.push("<!-- #{text} -->")
       end
 
@@ -90,8 +95,12 @@ module Philiprehberger
       # @param indent [Integer, nil] number of spaces per indentation level, or nil for compact output
       # @return [String] the rendered XML document
       def to_xml(indent: nil)
-        parts = ["<?xml version=\"#{@version}\" encoding=\"#{@encoding}\"?>"]
-        parts << (indent ? "\n" : '')
+        parts = []
+
+        if @declaration
+          parts << "<?xml version=\"#{@version}\" encoding=\"#{@encoding}\"?>"
+          parts << (indent ? "\n" : '')
+        end
 
         @children.each do |child|
           parts << render_child(child, indent: indent, level: 0)
