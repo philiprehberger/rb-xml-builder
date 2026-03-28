@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-03-28
+
+### Added
+
+- XML namespace support with `namespace` and `namespace_tag` methods for prefix declarations and namespace-aware elements
+- SOAP envelope builder with `soap_envelope` DSL and `build_soap` convenience method supporting SOAP 1.1 and 1.2
+- XML fragment composition with `append` (merge Document objects) and `insert_fragment` (insert raw XML strings)
+- Support for double-underscore to colon conversion in symbol attribute keys (e.g. `xmlns__soap:` becomes `xmlns:soap=`)
+
 ## [0.1.1] - 2026-03-26
 
 ### Added

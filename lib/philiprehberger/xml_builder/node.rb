@@ -50,7 +50,8 @@ module Philiprehberger
         return '' if @attributes.empty?
 
         pairs = @attributes.map do |key, value|
-          " #{key}=\"#{Escaper.escape(value)}\""
+          attr_name = key.to_s.gsub('__', ':')
+          " #{attr_name}=\"#{Escaper.escape(value)}\""
         end
         pairs.join
       end

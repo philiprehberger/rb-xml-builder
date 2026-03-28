@@ -6,7 +6,7 @@ module Philiprehberger
     #
     # Used as the context object inside XmlBuilder.build blocks.
     class Document
-      attr_reader :version, :encoding
+      attr_reader :version, :encoding, :children
 
       # @param version [String] XML version for the declaration
       # @param encoding [String] XML encoding for the declaration
@@ -15,6 +15,7 @@ module Philiprehberger
         @encoding = encoding
         @children = []
         @node_stack = []
+        @namespaces = {}
       end
 
       # Add an XML element with optional attributes and nested children.
@@ -97,6 +98,96 @@ module Philiprehberger
         end
 
         parts.join
+      end
+
+      # Register an XML namespace prefix and URI.
+      #
+      # Registered namespaces are automatically added as xmlns attributes
+      # when using namespace_tag.
+      #
+      # @param prefix [String, Symbol] the namespace prefix
+      # @param uri [String] the namespace URI
+      # @return [void]
+      def namespace(prefix, uri)
+        @namespaces[prefix.to_s] = uri
+      end
+
+      # Add a namespace-prefixed element.
+      #
+      # Automatically includes the xmlns declaration for the prefix if it was
+      # registered via #namespace and this is the first use in the current scope.
+      #
+      # @param prefix [String, Symbol] the namespace prefix
+      # @param name [String, Symbol] the local element name
+      # @param attributes [Hash] additional element attributes
+      # @yield optional block for adding child elements
+      # @return [Node] the created node
+      def namespace_tag(prefix, name, attributes = {}, &)
+        prefixed_name = "#{prefix}:#{name}"
+        uri = @namespaces[prefix.to_s]
+        attrs = if uri
+                  { "xmlns:#{prefix}" => uri }.merge(attributes)
+                else
+                  attributes
+                end
+        tag(prefixed_name, attrs, &)
+      end
+
+      # Build a SOAP envelope using a block-based DSL.
+      #
+      # Supports SOAP 1.1 (default) and 1.2. Automatically sets the correct
+      # namespace URI and creates the Envelope, Header, and Body elements.
+      #
+      # @param version [String] SOAP version: "1.1" or "1.2"
+      # @yield [header, body] yields two procs for adding header and body content
+      # @return [void]
+      def soap_envelope(version: '1.1')
+        uri = case version
+              when '1.1' then 'http://schemas.xmlsoap.org/soap/envelope/'
+              when '1.2' then 'http://www.w3.org/2003/05/soap-envelope'
+              else
+                raise Error, "Unsupported SOAP version: #{version}. Use '1.1' or '1.2'."
+              end
+
+        header_children = []
+        body_children = []
+
+        yield(header_children, body_children) if block_given?
+
+        tag('soap:Envelope', 'xmlns:soap' => uri) do
+          tag('soap:Header') do
+            header_children.each { |child_block| child_block.call(self) }
+          end
+          tag('soap:Body') do
+            body_children.each { |child_block| child_block.call(self) }
+          end
+        end
+      end
+
+      # Append children from another Document into this document.
+      #
+      # Copies all top-level children from the source document into the current
+      # insertion point (either the document root or the current parent element).
+      #
+      # @param other [Document] the source document whose children to import
+      # @return [void]
+      def append(other)
+        raise Error, 'append expects a Document' unless other.is_a?(Document)
+
+        other.children.each do |child|
+          current_parent.push(child)
+        end
+      end
+
+      # Insert a raw XML fragment string into the current position.
+      #
+      # This is an alias for #raw, provided for semantic clarity when composing
+      # fragments.
+      #
+      # @param xml_string [String] the XML fragment to insert
+      # @return [void]
+      def insert_fragment(xml_string)
+        raw(xml_string)
       end
 
       # Support method_missing for DSL-style tag creation.
