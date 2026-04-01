@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.email = ['me@philiprehberger.com']
   spec.summary = 'Lightweight XML builder DSL without Nokogiri dependency'
   spec.description = 'Programmatic XML construction with a clean DSL, auto-escaping, CDATA, comments, ' \
-                       'processing instructions, and pretty printing. Zero dependencies.'
+                     'processing instructions, and pretty printing. Zero dependencies.'
   spec.homepage = 'https://philiprehberger.com/open-source-packages/ruby/philiprehberger-xml_builder'
   spec.license = 'MIT'
   spec.required_ruby_version = '>= 3.1.0'
