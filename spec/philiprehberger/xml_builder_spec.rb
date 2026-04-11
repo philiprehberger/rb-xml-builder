@@ -103,6 +103,14 @@ RSpec.describe Philiprehberger::XmlBuilder do
       end
       expect(xml).to include('<script><![CDATA[var x = 1 < 2 && true;]]></script>')
     end
+
+    it 'raises an error when content contains ]]>' do
+      expect do
+        described_class.build do |doc|
+          doc.tag(:script) { doc.cdata('invalid ]]> content') }
+        end
+      end.to raise_error(Philiprehberger::XmlBuilder::Error, /CDATA content must not contain/)
+    end
   end
 
   describe 'comments' do
@@ -122,6 +130,14 @@ RSpec.describe Philiprehberger::XmlBuilder do
         end
       end
       expect(xml).to include('<!-- inner comment -->')
+    end
+
+    it 'raises an error when text contains --' do
+      expect do
+        described_class.build do |doc|
+          doc.comment('invalid -- comment')
+        end
+      end.to raise_error(Philiprehberger::XmlBuilder::Error, /Comment text must not contain/)
     end
   end
 
@@ -199,6 +215,40 @@ RSpec.describe Philiprehberger::XmlBuilder do
       end
       expect(xml).not_to include("\n  ")
       expect(xml).to include('<root><child>value</child></root>')
+    end
+  end
+
+  describe 'declaration option' do
+    it 'omits the XML declaration when declaration: false' do
+      xml = described_class.build(declaration: false) do |doc|
+        doc.tag(:root) { doc.text('hello') }
+      end
+      expect(xml).not_to include('<?xml')
+      expect(xml).to eq('<root>hello</root>')
+    end
+
+    it 'omits the declaration via Document.new' do
+      doc = Philiprehberger::XmlBuilder::Document.new(declaration: false)
+      doc.tag(:item) { doc.text('value') }
+      expect(doc.to_xml).not_to include('<?xml')
+      expect(doc.to_xml).to eq('<item>value</item>')
+    end
+
+    it 'omits the declaration with indentation' do
+      doc = Philiprehberger::XmlBuilder::Document.new(declaration: false)
+      doc.tag(:root) do
+        doc.tag(:child) { doc.text('value') }
+      end
+      result = doc.to_xml(indent: 2)
+      expect(result).not_to include('<?xml')
+      expect(result).to start_with('<root>')
+    end
+
+    it 'includes the declaration by default' do
+      xml = described_class.build do |doc|
+        doc.tag(:root)
+      end
+      expect(xml).to start_with('<?xml version="1.0" encoding="UTF-8"?>')
     end
   end
 

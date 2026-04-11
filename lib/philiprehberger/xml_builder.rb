@@ -15,8 +15,8 @@ module Philiprehberger
     # @param version [String] XML version declaration (default: "1.0")
     # @yield [Document] the document builder
     # @return [String] the rendered XML string
-    def self.build(encoding: 'UTF-8', version: '1.0', &block)
-      doc = Document.new(version: version, encoding: encoding)
+    def self.build(encoding: 'UTF-8', version: '1.0', declaration: true, &block)
+      doc = Document.new(version: version, encoding: encoding, declaration: declaration)
       block.call(doc)
       doc.to_s
     end
@@ -31,8 +31,8 @@ module Philiprehberger
     # @param version [String] XML version declaration (default: "1.0")
     # @yield [header, body] yields two arrays; push lambdas that accept a doc
     # @return [String] the rendered SOAP XML string
-    def self.build_soap(soap_version: '1.1', encoding: 'UTF-8', version: '1.0', &block)
-      doc = Document.new(version: version, encoding: encoding)
+    def self.build_soap(soap_version: '1.1', encoding: 'UTF-8', version: '1.0', declaration: true, &block)
+      doc = Document.new(version: version, encoding: encoding, declaration: declaration)
       doc.soap_envelope(version: soap_version, &block)
       doc.to_s
     end
