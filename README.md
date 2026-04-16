@@ -68,6 +68,20 @@ end
 
 ### Processing Instructions
 
+Pass keyword attributes to emit a structured PI with XML-escaped values:
+
+```ruby
+xml = Philiprehberger::XmlBuilder.build do |doc|
+  doc.pi("xml-stylesheet", href: "style.xsl", type: "text/xsl")
+  doc.tag(:root) { doc.text("content") }
+end
+
+puts xml
+# <?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet href="style.xsl" type="text/xsl"?><root>content</root>
+```
+
+A legacy positional content string is also supported:
+
 ```ruby
 xml = Philiprehberger::XmlBuilder.build do |doc|
   doc.processing_instruction("xml-stylesheet", 'type="text/xsl" href="style.xsl"')
@@ -209,6 +223,7 @@ end
 | `#cdata(content)` | Add a CDATA section |
 | `#comment(text)` | Add an XML comment |
 | `#processing_instruction(target, content)` | Add a processing instruction |
+| `#processing_instruction(target, **attrs)` | Append an XML processing instruction (alias: `#pi`) |
 | `#raw(string)` | Add raw unescaped XML |
 | `#namespace(prefix, uri)` | Register an XML namespace prefix and URI |
 | `#namespace_tag(prefix, name, attributes = {}) { ... }` | Add a namespace-prefixed element with auto xmlns |

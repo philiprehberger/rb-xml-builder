@@ -3,6 +3,7 @@
 require_relative 'xml_builder/version'
 require_relative 'xml_builder/escaper'
 require_relative 'xml_builder/node'
+require_relative 'xml_builder/processing_instruction'
 require_relative 'xml_builder/document'
 
 module Philiprehberger
