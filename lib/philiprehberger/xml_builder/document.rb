@@ -66,14 +66,32 @@ module Philiprehberger
         current_parent.push("<!-- #{text} -->")
       end
 
+      # Valid PI target pattern per the XML spec (simplified).
+      PI_TARGET_PATTERN = /\A[A-Za-z_][\w.-]*\z/
+
       # Add a processing instruction.
       #
-      # @param target [String] the PI target
-      # @param content [String] the PI content
+      # Accepts either a legacy positional content string or keyword attributes.
+      # When attrs are given, renders as <?target key="value" key2="value2"?>.
+      # When a content string is given, renders as <?target content?>.
+      #
+      # @param target [String] the PI target (must match PI_TARGET_PATTERN; "xml" is forbidden)
+      # @param content [String, nil] optional raw PI content string (legacy)
+      # @param attrs [Hash] attribute key/value pairs (XML-escaped)
       # @return [void]
-      def processing_instruction(target, content)
-        current_parent.push("<?#{target} #{content}?>")
+      # @raise [ArgumentError] if target is empty, invalid, or equal to "xml" (case-insensitive)
+      def processing_instruction(target, content = nil, **attrs)
+        validate_pi_target!(target)
+
+        if content.is_a?(String)
+          current_parent.push("<?#{target} #{content}?>")
+        else
+          current_parent.push(ProcessingInstruction.new(target, attrs))
+        end
       end
+
+      # Alias for #processing_instruction.
+      alias pi processing_instruction
 
       # Add raw XML content without escaping.
       #
@@ -236,10 +254,18 @@ module Philiprehberger
         @node_stack.last&.children || @children
       end
 
+      def validate_pi_target!(target)
+        raise ArgumentError, 'PI target must be a non-empty String' unless target.is_a?(String) && !target.empty?
+        raise ArgumentError, 'PI target "xml" is reserved by the XML specification' if target.casecmp('xml').zero?
+        raise ArgumentError, "Invalid PI target: #{target.inspect}" unless target.match?(PI_TARGET_PATTERN)
+      end
+
       def render_child(child, indent:, level:)
         case child
         when Node
           child.render(indent: indent, level: level)
+        when ProcessingInstruction
+          child.to_xml(indent: indent, level: level, pretty: !indent.nil?)
         when String
           if indent
             "#{' ' * (indent * level)}#{child}\n"
