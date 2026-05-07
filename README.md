@@ -104,6 +104,16 @@ puts doc.to_xml(indent: 2)
 # </root>
 ```
 
+Or use `#pretty` for the same output with sane defaults:
+
+```ruby
+puts doc.pretty
+# Equivalent to doc.to_xml(indent: 2)
+
+puts doc.pretty(indent: 4)
+# Equivalent to doc.to_xml(indent: 4)
+```
+
 ### Raw XML
 
 ```ruby
@@ -232,6 +242,7 @@ end
 | `#insert_fragment(xml_string)` | Insert a raw XML fragment string |
 | `#to_s` | Render compact XML string |
 | `#to_xml(indent: nil)` | Render XML with optional indentation |
+| `#pretty(indent: 2)` | Renders with default 2-space indentation |
 
 ### `Escaper`
 

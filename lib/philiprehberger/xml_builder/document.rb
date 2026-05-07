@@ -108,6 +108,14 @@ module Philiprehberger
         to_xml
       end
 
+      # Render the document as a pretty-printed XML string with default 2-space indentation.
+      #
+      # @param indent [Integer] number of spaces per indentation level (default 2)
+      # @return [String] the rendered XML document
+      def pretty(indent: 2)
+        to_xml(indent: indent)
+      end
+
       # Render the document as an XML string with optional indentation.
       #
       # @param indent [Integer, nil] number of spaces per indentation level, or nil for compact output

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-05-07
+
+### Added
+- `Document#pretty(indent: 2)` — convenience renderer for pretty-printed XML, equivalent to `to_xml(indent: 2)` but with sane defaults.
+
 ## [0.4.0] - 2026-04-16
 
 ### Added

@@ -218,6 +218,48 @@ RSpec.describe Philiprehberger::XmlBuilder do
     end
   end
 
+  describe '#pretty' do
+    it 'equals to_xml(indent: 2) for a simple document with nested tags' do
+      doc = Philiprehberger::XmlBuilder::Document.new
+      doc.tag(:root) do
+        doc.tag(:child) { doc.text('value') }
+      end
+      expect(doc.pretty).to eq(doc.to_xml(indent: 2))
+    end
+
+    it 'pretty(indent: 4) equals to_xml(indent: 4)' do
+      doc = Philiprehberger::XmlBuilder::Document.new
+      doc.tag(:root) do
+        doc.tag(:child) { doc.text('value') }
+      end
+      expect(doc.pretty(indent: 4)).to eq(doc.to_xml(indent: 4))
+    end
+
+    it 'works for nested elements with a 2-space indent before the inner tag' do
+      doc = Philiprehberger::XmlBuilder::Document.new
+      doc.tag(:root) do
+        doc.tag(:child) { doc.text('value') }
+      end
+      result = doc.pretty
+      expect(result).to include("\n  <child>value</child>")
+    end
+
+    it 'preserves the XML declaration when enabled (default)' do
+      doc = Philiprehberger::XmlBuilder::Document.new
+      doc.tag(:root) { doc.text('value') }
+      expect(doc.pretty).to start_with('<?xml version="1.0" encoding="UTF-8"?>')
+    end
+
+    it 'works on a SOAP-built document without raising' do
+      doc = Philiprehberger::XmlBuilder::Document.new
+      doc.soap_envelope do |_header, body|
+        body << ->(d) { d.tag('GetPrice') { d.text('Widget') } }
+      end
+      expect { doc.pretty }.not_to raise_error
+      expect(doc.pretty).to include('<soap:Envelope')
+    end
+  end
+
   describe 'declaration option' do
     it 'omits the XML declaration when declaration: false' do
       xml = described_class.build(declaration: false) do |doc|
